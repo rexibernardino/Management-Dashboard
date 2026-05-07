@@ -5,12 +5,19 @@ import streamlit as st
 
 
 def clean_volume(val):
-    if pd.isna(val) or val == "":
-        return 0.0
-    if isinstance(val, (int, float)):
-        return float(val)
-    res = str(val).replace('.', '').replace(',', '.')
     try:
+        # Jika sudah angka, langsung kembalikan float
+        if isinstance(val, (int, float)):
+            return float(val)
+        # Jika string, bersihkan karakter aneh tapi jaga titik desimal
+        # Hapus spasi atau karakter non-numerik kecuali titik/koma
+        res = str(val).strip()
+        # Jika locale Indonesia (koma adalah desimal), ganti koma ke titik
+        if ',' in res and '.' in res: # Kasus 1.234,56
+            res = res.replace('.', '').replace(',', '.')
+        elif ',' in res: # Kasus 1234,56
+            res = res.replace(',', '.')
+            
         return float(res)
     except:
         return 0.0
@@ -48,6 +55,7 @@ def calculate_ranking(df, category, target_col='Volume'):
     
     filtered_df = df[df['Category'] == category].copy()
     ranked = filtered_df.groupby('Broker_Name')[target_col].sum().reset_index()
+    ranked[target_col] = ranked[target_col].round(2)
     ranked = ranked.sort_values(by=target_col, ascending=False).reset_index(drop=True)
     
     total_volume = ranked[target_col].sum()

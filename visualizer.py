@@ -18,10 +18,11 @@ def create_bar_chart(df, title, color_scale, is_ascending=False, target_val='Vol
         title=title
     )
     
-    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+    fig.update_traces(texttemplate='%{x:,.2f}', textposition='outside',cliponaxis=False)
     fig.update_layout(
-        height=350, 
-        margin=dict(l=10, r=10, t=30, b=40),
-        showlegend=False
+        height=400, 
+        margin=dict(l=10, r=40, t=30, b=40),
+        showlegend=False,
+        xaxis=dict(tickformat=',.2f')
     )
     return fig

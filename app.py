@@ -166,4 +166,11 @@ if check_password():
                     
     if menu == "Data Explorer":
         st.title("🗂️ Data Explorer")
-        st.dataframe(st.session_state.main_df, use_container_width=True)
+        st.dataframe(
+            st.session_state.main_df, 
+            column_config={
+                "Volume": st.column_config.NumberColumn(format="%,.2f"),
+                "Fee": st.column_config.NumberColumn(format="%,.2f"),
+            },
+            use_container_width=True
+        )
