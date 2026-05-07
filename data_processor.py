@@ -5,19 +5,32 @@ import streamlit as st
 
 
 def clean_volume(val):
-    try:
-        # Jika sudah angka, langsung kembalikan float
-        if isinstance(val, (int, float)):
-            return float(val)
-        # Jika string, bersihkan karakter aneh tapi jaga titik desimal
-        # Hapus spasi atau karakter non-numerik kecuali titik/koma
-        res = str(val).strip()
-        # Jika locale Indonesia (koma adalah desimal), ganti koma ke titik
-        if ',' in res and '.' in res: # Kasus 1.234,56
+    if isinstance(val, (int, float)):
+        return float(val)
+    
+    res = str(val).strip().replace('\xa0', '') # Hapus spasi kosong
+    if not res or res == '-': return 0.0
+    
+    # Deteksi otomatis format ribuan
+    # Jika ada koma dan titik, kita asumsikan karakter terakhir adalah desimal
+    if ',' in res and '.' in res:
+        if res.find('.') < res.find(','): # Format Indo: 1.234,56
             res = res.replace('.', '').replace(',', '.')
-        elif ',' in res: # Kasus 1234,56
+        else: # Format US: 1,234.56
+            res = res.replace(',', '')
+    elif ',' in res:
+        # Jika hanya ada koma, cek apakah itu desimal atau ribuan
+        # Seringkali di GSheets Indo, koma adalah desimal
+        if len(res.split(',')[-1]) <= 2: # Contoh: 154,72 (desimal)
             res = res.replace(',', '.')
+        else: # Contoh: 154,724 (ribuan)
+            res = res.replace(',', '')
+    elif '.' in res:
+        # Jika hanya ada titik, cek apakah ribuan atau desimal
+        if len(res.split('.')[-1]) > 2: # Contoh: 154.724 (ribuan)
+            res = res.replace('.', '')
             
+    try:
         return float(res)
     except:
         return 0.0
@@ -86,11 +99,12 @@ def load_data_from_gdrive(spreadsheet_url):
             # Fixed Income (A-F), Money Market (H-M), Spot (O-T), Swap (V-AA)
             # Kolom Date berada pada indeks 3, 10, 17, dan 24
             configs = [
-                    [3, [0, 3, 4, 5], 'Fixed Income'], # Fee di indeks 5
-                    [3, [7, 10, 11, 12], 'Money Market'], # Fee di indeks 12
-                    [3, [14, 17, 18, 19], 'Spot'], # Fee di indeks 19
-                    [3, [21, 24, 25, 26], 'Swap'] # Fee di indeks 26
-                ]
+                # Format: [BarisMulai, [IndeksBroker, IndeksDate, IndeksVol, IndeksFee], NamaKategori]
+                [3, [0, 3, 4, 5], 'Fixed Income'],   # Broker(A), Date(D), Volume(E), Fee(F)
+                [3, [7, 10, 11, 12], 'Money Market'], # Broker(H), Date(K), Volume(L), Fee(M)
+                [3, [14, 17, 18, 19], 'Spot'],        # Broker(O), Date(R), Volume(S), Fee(T)
+                [3, [21, 24, 25, 26], 'Swap']         # Broker(V), Date(Y), Volume(Z), Fee(AA)
+            ]
             
             for start_row, cols, cat_name in configs:
                 try:
@@ -139,11 +153,11 @@ def parse_sheet_to_dataframe(worksheet):
     # Mapping berdasarkan struktur kolom Anda:
     # FIXED INCOME (Kolom A-F, Date di D) | MONEY MARKET (Kolom H-M, Date di K) ...
     configs = [
-        [2, [0, 3, 4, 5], 'Fixed Income'], # Nama Broker (A), Date (D), Volume (E), Fee (F)
-        [2, [7, 10, 11, 12], 'Money Market'], # Nama Broker (H), Date (K), Volume (L), Fee (M)
-        [2, [14, 17, 18, 19], 'Spot'],        # Nama Broker (O), Date (R), Volume (S), Fee (T)
-        [2, [21, 24, 25, 26], 'Swap']         # Nama Broker (V), Date (Y), Volume (Z), Fee (AA)
-    ]
+            [3, [0, 3, 4, 5], 'Fixed Income'],
+            [3, [7, 10, 11, 12], 'Money Market'],
+            [3, [14, 17, 18, 19], 'Spot'],
+            [3, [21, 24, 25, 26], 'Swap']
+        ]
     
     for start_row, cols, cat_name in configs:
         try:
