@@ -35,6 +35,9 @@ Struktur folder proyek ini dirancang agar modular dan mudah dikelola:
 ├── requirements.txt       # Daftar library Python yang dibutuhkan
 ├── .gitignore             # Daftar file yang tidak boleh diunggah (secrets.toml)
 └── README.md              # Dokumentasi proyek
+```
+
+---
 
 ## 🛠️ Instalasi
 
