@@ -60,8 +60,8 @@ if check_password():
             st.rerun()
 
     st.sidebar.divider()
-    # --- TAMPILAN DASHBOARD ---
-    menu = st.sidebar.radio("Menu", ["Dashboard by Volume", "Data Explorer"])
+    # --- SIDEBAR MENU ---
+    menu = st.sidebar.radio("Menu", ["Dashboard by Volume", "Dashboard by Fee", "Data Explorer"])
     categories = ["Fixed Income", "Money Market", "Spot", "Swap"]
 
     if 'main_df' not in st.session_state:
@@ -70,11 +70,14 @@ if check_password():
             st.session_state.main_df = df
             st.session_state.sheet_title = title
 
-    if menu == "Dashboard by Volume":
-        st.title(f"📊 {st.session_state.sheet_title}")
+    if menu in ["Dashboard by Volume", "Dashboard by Fee"]:
+        active_metric = "Volume" if menu == "Dashboard by Volume" else "Fee"
+
+        st.title(f"📊 {st.session_state.sheet_title} ({active_metric})")
             
         date_range = [] 
         st.sidebar.divider()
+
         if not st.session_state.main_df.empty:
                 # Memastikan kolom Date adalah format datetime
             st.session_state.main_df['Date'] = pd.to_datetime(st.session_state.main_df['Date'])
@@ -104,7 +107,7 @@ if check_password():
                 mask = (df_filtered['Date'].dt.date >= start_date) & (df_filtered['Date'].dt.date <= end_date)
                 df_filtered = df_filtered.loc[mask]
                 date_info = f"({start_date} - {end_date})"
-                st.info(f"📍 Menampilkan transaksi dari **{start_date}** sampai **{end_date}**")
+                st.info(f"📍 Menampilkan data **{active_metric}** dari **{start_date}** sampai **{end_date}**")
 
         else:
                 # Jika user baru klik tanggal mulai saja, tampilkan pesan instruksi[cite: 1]
@@ -120,7 +123,7 @@ if check_password():
                 "FX Combined": "USD MIO"
                 }
 
-        sort_choice = st.sidebar.selectbox("Urutan Volume:", ["Terbesar (Descending)", "Terkecil (Ascending)"], )
+        sort_choice = st.sidebar.selectbox(f"Urutan {active_metric}:", ["Terbesar (Descending)", "Terkecil (Ascending)"], )
         is_asc = True if sort_choice == "Terkecil (Ascending)" else False
 
         view_option = st.sidebar.radio("Tampilan FX (Spot & Swap):",["Dipisah", "Digabung (FX Total)"])
@@ -142,21 +145,22 @@ if check_password():
                     df_fx = df_filtered[df_filtered['Category'].isin(['Spot', 'Swap'])]
                     
                     # Hitung ranking dari hasil gabungan tersebut
-                    df_cat = df_fx.groupby('Broker_Name')['Volume'].sum().reset_index()
-                    df_cat = df_cat.sort_values(by='Volume', ascending=False).reset_index(drop=True)
-                    total_vol = df_cat['Volume'].sum()
-                    df_cat['Percentage (%)'] = (df_cat['Volume'] / total_vol * 100).round(2) if total_vol > 0 else 0
+                    df_cat = df_fx.groupby('Broker_Name')[active_metric].sum().reset_index()
+                    df_cat = df_cat.sort_values(by=active_metric, ascending=False).reset_index(drop=True)
+                    total_val = df_cat[active_metric].sum()
+                    df_cat['Percentage (%)'] = (df_cat[active_metric] / total_val * 100).round(2) if total_val > 0 else 0
                     df_cat.index += 1
                     df_cat = df_cat.reset_index().rename(columns={'index': 'Rank'})
                 else:
                     # LOGIKA TERPISAH: Jalankan fungsi normal untuk kategori tunggal[cite: 1, 2]
-                    df_cat = calculate_ranking(df_filtered, cat) 
+                    df_cat = calculate_ranking(df_filtered, cat, target_col=active_metric) 
                     
                 if not df_cat.empty:
+                    color_theme = "Viridis" if active_metric == "Volume" else "Plasma"
                     # Render chart[cite: 3]
-                    fig = create_bar_chart(df_cat, f"Contribution {cat} {date_info}", "Viridis", is_ascending=is_asc)
+                    fig = create_bar_chart(df_cat, f"Contribution {cat} {date_info}", color_theme, is_ascending=is_asc, target_val=active_metric)
                     # Gunakan key yang unik agar Streamlit tidak konflik saat berpindah mode[cite: 1]
-                    st.plotly_chart(fig, use_container_width=True, key=f"chart_{cat}_{view_option}_{date_range}")
+                    st.plotly_chart(fig, use_container_width=True, key=f"chart_{cat}_{menu}_{view_option}_{date_range}")
                 else:
                     st.caption(f"⚠️ Tidak ada transaksi {cat} di rentang ini.")
                     

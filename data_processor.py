@@ -42,16 +42,16 @@ def parse_management_csv(file, date_selected):
     final_df['Date'] = pd.to_datetime(date_selected).date()
     return final_df
 
-def calculate_ranking(df, category):
+def calculate_ranking(df, category, target_col='Volume'):
     if df.empty:
-        return pd.DataFrame(columns=['Rank', 'Broker_Name', 'Volume', 'Percentage (%)'])
+        return pd.DataFrame(columns=['Rank', 'Broker_Name', target_col, 'Percentage (%)'])
     
     filtered_df = df[df['Category'] == category].copy()
-    ranked = filtered_df.groupby('Broker_Name')['Volume'].sum().reset_index()
-    ranked = ranked.sort_values(by='Volume', ascending=False).reset_index(drop=True)
+    ranked = filtered_df.groupby('Broker_Name')[target_col].sum().reset_index()
+    ranked = ranked.sort_values(by=target_col, ascending=False).reset_index(drop=True)
     
-    total_volume = ranked['Volume'].sum()
-    ranked['Percentage (%)'] = (ranked['Volume'] / total_volume * 100).round(2) if total_volume > 0 else 0
+    total_volume = ranked[target_col].sum()
+    ranked['Percentage (%)'] = (ranked[target_col] / total_volume * 100).round(2) if total_volume > 0 else 0
     ranked.index += 1
     ranked.index.name = 'Rank'
     return ranked.reset_index()
@@ -78,16 +78,16 @@ def load_data_from_gdrive(spreadsheet_url):
             # Fixed Income (A-F), Money Market (H-M), Spot (O-T), Swap (V-AA)
             # Kolom Date berada pada indeks 3, 10, 17, dan 24
             configs = [
-                [3, [0, 3, 4], 'Fixed Income'], # Broker Name (0), Date (3), Volume (4)
-                [3, [7, 10, 11], 'Money Market'],
-                [3, [14, 17, 18], 'Spot'],
-                [3, [21, 24, 25], 'Swap']
-            ]
+                    [3, [0, 3, 4, 5], 'Fixed Income'], # Fee di indeks 5
+                    [3, [7, 10, 11, 12], 'Money Market'], # Fee di indeks 12
+                    [3, [14, 17, 18, 19], 'Spot'], # Fee di indeks 19
+                    [3, [21, 24, 25, 26], 'Swap'] # Fee di indeks 26
+                ]
             
             for start_row, cols, cat_name in configs:
                 try:
                     temp = df_raw.iloc[start_row:, cols].copy()
-                    temp.columns = ['Broker_Name', 'Date', 'Volume']
+                    temp.columns = ['Broker_Name', 'Date', 'Volume', 'Fee']
                     
                     # Bersihkan baris kosong dan total[cite: 2]
                     temp = temp[temp['Broker_Name'] != ""]
@@ -96,6 +96,7 @@ def load_data_from_gdrive(spreadsheet_url):
                     # Ubah kolom Date menjadi tipe datetime agar bisa difilter[cite: 2]
                     temp['Date'] = pd.to_datetime(temp['Date'], dayfirst=True, errors='coerce')
                     temp['Volume'] = temp['Volume'].apply(clean_volume)
+                    temp['Fee'] = temp['Fee'].apply(clean_volume)
                     temp['Category'] = cat_name
                     
                     all_data_frames.append(temp.dropna(subset=['Date']))
@@ -130,16 +131,16 @@ def parse_sheet_to_dataframe(worksheet):
     # Mapping berdasarkan struktur kolom Anda:
     # FIXED INCOME (Kolom A-F, Date di D) | MONEY MARKET (Kolom H-M, Date di K) ...
     configs = [
-        [2, [0, 3, 4], 'Fixed Income'], # Nama Broker (A), Date (D), Volume (E)
-        [2, [7, 10, 11], 'Money Market'], # Nama Broker (H), Date (K), Volume (L)
-        [2, [14, 17, 18], 'Spot'],        # Nama Broker (O), Date (R), Volume (S)
-        [2, [21, 24, 25], 'Swap']         # Nama Broker (V), Date (Y), Volume (Z)
+        [2, [0, 3, 4, 5], 'Fixed Income'], # Nama Broker (A), Date (D), Volume (E), Fee (F)
+        [2, [7, 10, 11, 12], 'Money Market'], # Nama Broker (H), Date (K), Volume (L), Fee (M)
+        [2, [14, 17, 18, 19], 'Spot'],        # Nama Broker (O), Date (R), Volume (S), Fee (T)
+        [2, [21, 24, 25, 26], 'Swap']         # Nama Broker (V), Date (Y), Volume (Z), Fee ([)
     ]
     
     for start_row, cols, cat_name in configs:
         try:
             temp = df_raw.iloc[start_row:, cols].copy()
-            temp.columns = ['Broker_Name', 'Date', 'Volume']
+            temp.columns = ['Broker_Name', 'Date', 'Volume', 'Fee']
             
             # Bersihkan data kosong
             temp = temp[temp['Broker_Name'] != ""]
@@ -157,19 +158,19 @@ def parse_sheet_to_dataframe(worksheet):
     return pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
 
 # --- Tambahkan di data_processor.py ---
-def calculate_ranking_combined(df_subset):
+def calculate_ranking_combined(df_subset, target_col='Volume'):
     """
     Menghitung ranking dari dataframe yang sudah difilter sebelumnya (misal: gabungan Spot & Swap)
     """
     if df_subset.empty:
-        return pd.DataFrame(columns=['Rank', 'Broker_Name', 'Volume', 'Percentage (%)'])
+        return pd.DataFrame(columns=['Rank', 'Broker_Name', target_col, 'Percentage (%)'])
     
     # Kelompokkan berdasarkan Broker dan jumlahkan volumenya
-    ranked = df_subset.groupby('Broker_Name')['Volume'].sum().reset_index()
-    ranked = ranked.sort_values(by='Volume', ascending=False).reset_index(drop=True)
+    ranked = df_subset.groupby('Broker_Name')[[target_col, 'Fee']].sum().reset_index()
+    ranked = ranked.sort_values(by=target_col, ascending=False).reset_index(drop=True)
     
-    total_volume = ranked['Volume'].sum()
-    ranked['Percentage (%)'] = (ranked['Volume'] / total_volume * 100).round(2) if total_volume > 0 else 0
+    total_volume = ranked[target_col].sum()
+    ranked['Percentage (%)'] = (ranked[target_col] / total_volume * 100).round(2) if total_volume > 0 else 0
     ranked.index += 1
     ranked.index.name = 'Rank'
     return ranked.reset_index()

@@ -1,19 +1,19 @@
 import plotly.express as px
 
-def create_bar_chart(df, title, color_scale, is_ascending=False):
+def create_bar_chart(df, title, color_scale, is_ascending=False, target_val='Volume'):
     if df.empty:
         return None
     
     # Sorting berdasarkan pilihan user
-    df_sorted = df.sort_values(by='Volume', ascending=is_ascending)
+    df_sorted = df.sort_values(by=target_val, ascending=is_ascending)
     
     fig = px.bar(
         df_sorted, 
-        x='Volume', 
+        x=target_val, 
         y='Broker_Name', 
-        text='Volume',
+        text=target_val,
         orientation='h',
-        color='Volume',
+        color=target_val,
         color_continuous_scale=color_scale,
         title=title
     )
