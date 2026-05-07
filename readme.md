@@ -10,6 +10,32 @@ Aplikasi dashboard berbasis web yang dibangun dengan **Streamlit** untuk mempros
 - **FX Combined View**: Fitur untuk menggabungkan data kategori 'Spot' dan 'Swap' menjadi satu tampilan 'FX Total'.
 - **Data Explorer**: Tabel mentah untuk meninjau data yang telah diproses.
 
+## 🛠️ Tech Stack
+
+Proyek ini dibangun menggunakan teknologi berikut:
+* **Python**: Bahasa pemrograman utama.
+* **Streamlit**: Framework untuk antarmuka dashboard web yang interaktif.
+* **Pandas**: Digunakan untuk pembersihan, manipulasi, dan analisis data tabel.
+* **Plotly Express**: Library untuk visualisasi data berupa grafik bar yang dinamis.
+* **Gspread & Google OAuth**: Untuk autentikasi dan komunikasi dengan Google Sheets API.
+* **Google Sheets**: Berperan sebagai database cloud untuk penyimpanan data transaksi.
+
+---
+
+## 📂 File Structure
+
+Struktur folder proyek ini dirancang agar modular dan mudah dikelola:
+
+```text
+├── .streamlit/
+│   └── secrets.toml       # Kredensial login & GCP Service Account (Local only)
+├── app.py                 # File utama: Logika UI, Login, dan Filter Periode
+├── data_processor.py      # Modul: Pengolahan data, cleaning, dan API Google Sheets
+├── visualizer.py          # Modul: Logika pembuatan grafik Plotly
+├── requirements.txt       # Daftar library Python yang dibutuhkan
+├── .gitignore             # Daftar file yang tidak boleh diunggah (secrets.toml)
+└── README.md              # Dokumentasi proyek
+
 ## 🛠️ Instalasi
 
 1. **Clone Repositori**:
