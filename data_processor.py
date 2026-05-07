@@ -2,6 +2,7 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 import streamlit as st
+import math
 
 
 def clean_volume(val):
@@ -34,7 +35,7 @@ def clean_volume(val):
         return float(res)
     except:
         return 0.0
-
+    
 def parse_management_csv(file, date_selected):
     """Membaca CSV dengan format 4 kategori baru"""
     df_raw = pd.read_csv(file, sep=';', header=None)
@@ -67,12 +68,23 @@ def calculate_ranking(df, category, target_col='Volume'):
         return pd.DataFrame(columns=['Rank', 'Broker_Name', target_col, 'Percentage (%)'])
     
     filtered_df = df[df['Category'] == category].copy()
+    
+    # --- PERBAIKAN: Normalisasi Nama Broker ---
+    filtered_df['Broker_Name'] = filtered_df['Broker_Name'].str.strip()
+    
+    filtered_df[target_col] = pd.to_numeric(filtered_df[target_col], errors='coerce').fillna(0)
+    
+    # Grouping dan Sum
     ranked = filtered_df.groupby('Broker_Name')[target_col].sum().reset_index()
-    ranked[target_col] = ranked[target_col].round(2)
+    
+    # --- PERBAIKAN: Pastikan hasil sum tetap di-trunc agar tidak ada akumulasi desimal ---
+    ranked[target_col] = ranked[target_col].apply(lambda x: float(math.trunc(x)))
+    
     ranked = ranked.sort_values(by=target_col, ascending=False).reset_index(drop=True)
     
-    total_volume = ranked[target_col].sum()
-    ranked['Percentage (%)'] = (ranked[target_col] / total_volume * 100).round(2) if total_volume > 0 else 0
+    total_value = ranked[target_col].sum()
+    ranked['Percentage (%)'] = (ranked[target_col] / total_value * 100) if total_value > 0 else 0
+    
     ranked.index += 1
     ranked.index.name = 'Rank'
     return ranked.reset_index()
@@ -111,11 +123,11 @@ def load_data_from_gdrive(spreadsheet_url):
                     temp = df_raw.iloc[start_row:, cols].copy()
                     temp.columns = ['Broker_Name', 'Date', 'Volume', 'Fee']
                     
-                    # Bersihkan baris kosong dan total[cite: 2]
+                    # Bersihkan baris kosong dan total
                     temp = temp[temp['Broker_Name'] != ""]
                     temp = temp[~temp['Broker_Name'].str.contains('Total|Name', case=False, na=False)]
                     
-                    # Ubah kolom Date menjadi tipe datetime agar bisa difilter[cite: 2]
+                    # Ubah kolom Date menjadi tipe datetime agar bisa difilter
                     temp['Date'] = pd.to_datetime(temp['Date'], dayfirst=True, errors='coerce')
                     temp['Volume'] = temp['Volume'].apply(clean_volume)
                     temp['Fee'] = temp['Fee'].apply(clean_volume)
@@ -179,20 +191,48 @@ def parse_sheet_to_dataframe(worksheet):
             
     return pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
 
-# --- Tambahkan di data_processor.py ---
 def calculate_ranking_combined(df_subset, target_col='Volume'):
+    if df_subset.empty:
+        return pd.DataFrame(columns=['Rank', 'Broker_Name', target_col, 'Percentage (%)'])
+    
+    # Normalisasi Nama
+    df_subset = df_subset.copy()
+    df_subset['Broker_Name'] = df_subset['Broker_Name'].str.strip()
+    
+    # Grouping
+    ranked = df_subset.groupby('Broker_Name')[target_col].sum().reset_index()
+    
+    # --- PERBAIKAN: Gunakan Truncation, Bukan Round ---
+    ranked[target_col] = ranked[target_col].apply(lambda x: float(math.trunc(x)))
+    
+    ranked = ranked.sort_values(by=target_col, ascending=False).reset_index(drop=True)
+    
+    total_value = ranked[target_col].sum()
+    # Hapus .round(2) di sini untuk konsistensi murni
+    ranked['Percentage (%)'] = (ranked[target_col] / total_value * 100) if total_value > 0 else 0
+    
+    ranked.index += 1
+    ranked.index.name = 'Rank'
+    return ranked.reset_index()
     """
-    Menghitung ranking dari dataframe yang sudah difilter sebelumnya (misal: gabungan Spot & Swap)
+    Menghitung ranking dari dataframe yang sudah difilter sebelumnya (misal: gabungan Spot & Swap).
+    Konsisten dengan calculate_ranking() dalam hal kolom yang digunakan.
     """
     if df_subset.empty:
         return pd.DataFrame(columns=['Rank', 'Broker_Name', target_col, 'Percentage (%)'])
     
-    # Kelompokkan berdasarkan Broker dan jumlahkan volumenya
-    ranked = df_subset.groupby('Broker_Name')[[target_col, 'Fee']].sum().reset_index()
+    # Kelompokkan berdasarkan Broker dan jumlahkan nilai target_col
+    ranked = df_subset.groupby('Broker_Name')[target_col].sum().reset_index()
+    ranked[target_col] = ranked[target_col].round(2)
+    
+    # Sort berdasarkan target_col (akan di-override oleh sorting di visualizer)
     ranked = ranked.sort_values(by=target_col, ascending=False).reset_index(drop=True)
     
-    total_volume = ranked[target_col].sum()
-    ranked['Percentage (%)'] = (ranked[target_col] / total_volume * 100).round(2) if total_volume > 0 else 0
+    # Hitung persentase
+    total_value = ranked[target_col].sum()
+    ranked['Percentage (%)'] = (ranked[target_col] / total_value * 100).round(2) if total_value > 0 else 0
+    
+    # Tambahkan rank
     ranked.index += 1
     ranked.index.name = 'Rank'
     return ranked.reset_index()

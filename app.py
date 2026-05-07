@@ -71,99 +71,132 @@ if check_password():
             st.session_state.sheet_title = title
 
     if menu in ["Dashboard by Volume", "Dashboard by Fee"]:
-        active_metric = "Volume" if menu == "Dashboard by Volume" else "Fee"
+            active_metric = "Volume" if menu == "Dashboard by Volume" else "Fee"
 
-        st.title(f"📊 {st.session_state.sheet_title} ({active_metric})")
+            st.title(f"📊 {st.session_state.sheet_title} ({active_metric})")
             
-        date_range = [] 
-        st.sidebar.divider()
+            # --- PENYIAPAN DATA ---
+            # Selalu gunakan copy() agar st.session_state.main_df tidak rusak
+            df_working = st.session_state.main_df.copy()
+            df_working['Date'] = pd.to_datetime(df_working['Date']) 
 
-        if not st.session_state.main_df.empty:
-                # Memastikan kolom Date adalah format datetime
-            st.session_state.main_df['Date'] = pd.to_datetime(st.session_state.main_df['Date'])
-                
-            min_date = st.session_state.main_df['Date'].min().date()
-            max_date = st.session_state.main_df['Date'].max().date()
+            st.sidebar.divider()
 
-            st.sidebar.subheader("📅 Filter Periode")
+            # Inisialisasi date_range dengan nilai default dari data agar tidak kosong
+            date_range = None
+
+            if not df_working.empty:
+                min_date = df_working['Date'].min().date()
+                max_date = df_working['Date'].max().date()
+
+                st.sidebar.subheader("📅 Filter Periode")
                 
-                # Mendefinisikan date_range melalui input user
-            date_range = st.sidebar.date_input(
+                # ✅ PERBAIKAN: Inisialisasi session_state untuk date_range jika belum ada
+                if "selected_date_range" not in st.session_state:
+                    st.session_state.selected_date_range = (min_date, max_date)
+                
+                # ✅ PERBAIKAN: Gunakan key yang SAMA untuk semua menu, ambil nilai dari session_state
+                date_range = st.sidebar.date_input(
                     "Pilih Rentang Waktu",
-                    value=(min_date, max_date),
+                    value=st.session_state.selected_date_range,
                     min_value=min_date,
                     max_value=max_date,
+                    key="global_date_range", # Key sama untuk semua menu
                     help="Pilih tanggal mulai dan akhir untuk memfilter data transaksi."
                 )
+                
+                # ✅ PERBAIKAN: Simpan pilihan user ke session_state
+                if isinstance(date_range, tuple) and len(date_range) == 2:
+                    st.session_state.selected_date_range = date_range
 
-            # --- EKSEKUSI FILTER DATA ---
-            # Membuat salinan data untuk difilter agar tidak merusak data asli
-        df_filtered = st.session_state.main_df.copy()
-
-            # Cek apakah date_range sudah berisi tuple tanggal (mulai, akhir)[cite: 1]
-        if isinstance(date_range, tuple) and len(date_range) == 2:
+            # --- EKSEKUSI FILTER ---
+            if isinstance(date_range, tuple) and len(date_range) == 2:
                 start_date, end_date = date_range
-                # Filter data berdasarkan kolom Date[cite: 1, 2]
-                mask = (df_filtered['Date'].dt.date >= start_date) & (df_filtered['Date'].dt.date <= end_date)
-                df_filtered = df_filtered.loc[mask]
+                mask = (df_working['Date'].dt.date >= start_date) & (df_working['Date'].dt.date <= end_date)
+                df_filtered = df_working.loc[mask].copy()
                 date_info = f"({start_date} - {end_date})"
                 st.info(f"📍 Menampilkan data **{active_metric}** dari **{start_date}** sampai **{end_date}**")
+            else:
+                st.warning("Silakan pilih tanggal akhir pada kalender untuk melengkapi rentang waktu.")
+                df_filtered = pd.DataFrame()
+                date_info = ""
 
-        else:
-                # Jika user baru klik tanggal mulai saja, tampilkan pesan instruksi[cite: 1]
-            st.warning("Silakan pilih tanggal akhir pada kalender untuk melengkapi rentang waktu.")
-            df_filtered = pd.DataFrame()
-
-            # Konfigurasi Unit Mata Uang per Kategori
-        unit_mapping = {
+            # --- KONFIGURASI TAMPILAN ---
+            unit_mapping = {
                 "Fixed Income": "IDR BIO",
                 "Money Market": "IDR BIO",
                 "Spot": "USD MIO",
                 "Swap": "USD MIO",
                 "FX Combined": "USD MIO"
-                }
+            }
 
-        sort_choice = st.sidebar.selectbox(f"Urutan {active_metric}:", ["Terbesar (Descending)", "Terkecil (Ascending)"], )
-        is_asc = True if sort_choice == "Terkecil (Ascending)" else False
+            # ✅ PERBAIKAN: Inisialisasi session_state untuk sort_choice
+            if "selected_sort" not in st.session_state:
+                st.session_state.selected_sort = "Terbesar (Descending)"
+            
+            sort_choice = st.sidebar.selectbox(
+                f"Urutan {active_metric}:", 
+                ["Terbesar (Descending)", "Terkecil (Ascending)"], 
+                index=0 if st.session_state.selected_sort == "Terbesar (Descending)" else 1,
+                key="global_sort_choice"  # Key yang sama untuk semua menu
+            )
+            
+            # ✅ PERBAIKAN: Simpan pilihan user
+            st.session_state.selected_sort = sort_choice
+            is_asc = True if sort_choice == "Terkecil (Ascending)" else False
 
-        view_option = st.sidebar.radio("Tampilan FX (Spot & Swap):",["Dipisah", "Digabung (FX Total)"])
+            # ✅ PERBAIKAN: Inisialisasi session_state untuk view_option
+            if "selected_view" not in st.session_state:
+                st.session_state.selected_view = "Dipisah"
+            
+            view_option = st.sidebar.radio(
+                "Tampilan FX (Spot & Swap):",
+                ["Dipisah", "Digabung (FX Total)"],
+                index=0 if st.session_state.selected_view == "Dipisah" else 1,
+                key="global_view_option"  # Key yang sama untuk semua menu
+            )
+            
+            # ✅ PERBAIKAN: Simpan pilihan user
+            st.session_state.selected_view = view_option
 
-        if view_option == "Dipisah":
-            display_categories = ["Fixed Income", "Money Market", "Spot", "Swap"]
-        else:
-            display_categories = ["Fixed Income", "Money Market", "FX Combined"]
-        
-        cols = st.columns(2)
+            display_categories = ["Fixed Income", "Money Market", "Spot", "Swap"] if view_option == "Dipisah" else ["Fixed Income", "Money Market", "FX Combined"]
+            
+            cols = st.columns(2)
 
-        for i, cat in enumerate(display_categories):
-            with cols[i % 2]:
-                unit = unit_mapping.get(cat, "")
-                st.markdown(f"#### {cat} ({unit})")
-                    
-                if cat == "FX Combined":
-                    # LOGIKA GABUNGAN: Filter data yang kategorinya Spot ATAU Swap[cite: 1, 2]
-                    df_fx = df_filtered[df_filtered['Category'].isin(['Spot', 'Swap'])]
-                    
-                    # Hitung ranking dari hasil gabungan tersebut
-                    df_cat = df_fx.groupby('Broker_Name')[active_metric].sum().reset_index()
-                    df_cat = df_cat.sort_values(by=active_metric, ascending=False).reset_index(drop=True)
-                    total_val = df_cat[active_metric].sum()
-                    df_cat['Percentage (%)'] = (df_cat[active_metric] / total_val * 100).round(2) if total_val > 0 else 0
-                    df_cat.index += 1
-                    df_cat = df_cat.reset_index().rename(columns={'index': 'Rank'})
-                else:
-                    # LOGIKA TERPISAH: Jalankan fungsi normal untuk kategori tunggal[cite: 1, 2]
-                    df_cat = calculate_ranking(df_filtered, cat, target_col=active_metric) 
-                    
-                if not df_cat.empty:
-                    color_theme = "Viridis" if active_metric == "Volume" else "Plasma"
-                    # Render chart[cite: 3]
-                    fig = create_bar_chart(df_cat, f"Contribution {cat} {date_info}", color_theme, is_ascending=is_asc, target_val=active_metric)
-                    # Gunakan key yang unik agar Streamlit tidak konflik saat berpindah mode[cite: 1]
-                    st.plotly_chart(fig, use_container_width=True, key=f"chart_{cat}_{menu}_{view_option}_{date_range}")
-                else:
-                    st.caption(f"⚠️ Tidak ada transaksi {cat} di rentang ini.")
-                    
+            # --- RENDER DASHBOARD ---
+            for i, cat in enumerate(display_categories):
+                with cols[i % 2]:
+                    # Gunakan unit dari mapping, jika Fee mungkin Anda ingin menggantinya ke IDR (opsional)
+                    unit = unit_mapping.get(cat, "")
+                    st.markdown(f"#### {cat} ({unit})")
+                        
+                    if cat == "FX Combined":
+                        # LOGIKA GABUNGAN: Filter data Spot & Swap dari df_filtered yang sudah bersih
+                        df_fx = df_filtered[df_filtered['Category'].isin(['Spot', 'Swap'])]
+                        
+                        if not df_fx.empty:
+                            # PERBAIKAN: Gunakan calculate_ranking_combined dengan target_col yang sesuai
+                            df_cat = calculate_ranking_combined(df_fx, target_col=active_metric)
+                        else:
+                            df_cat = pd.DataFrame()
+                    else:
+                        # LOGIKA TERPISAH: Gunakan calculate_ranking dengan target_col yang sesuai
+                        df_cat = calculate_ranking(df_filtered, cat, target_col=active_metric) 
+                        
+                    if not df_cat.empty:
+                        color_theme = "Viridis" if active_metric == "Volume" else "Plasma"
+                        fig = create_bar_chart(
+                            df_cat, 
+                            f"{cat} {date_info}", 
+                            color_theme, 
+                            is_ascending=is_asc, 
+                            target_val=active_metric
+                        )
+                        # Key unik untuk plotly chart agar tidak terjadi tabrakan ID komponen
+                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{cat}_{active_metric}_{view_option}")
+                    else:
+                        st.caption(f"⚠️ Tidak ada transaksi {cat} di rentang ini.")
+
     if menu == "Data Explorer":
         st.title("🗂️ Data Explorer")
         st.dataframe(
