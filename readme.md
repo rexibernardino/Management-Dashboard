@@ -14,8 +14,7 @@ Aplikasi dashboard berbasis web yang dibangun dengan **Streamlit** untuk mempros
 
 1. **Clone Repositori**:
    ```bash
-   git clone [https://github.com/username/nama-repo.git](https://github.com/username/nama-repo.git)
-   cd nama-repo
+   git clone https://github.com/rexibernardino/Management-Dashboard
 
 2. **Install Library**:
    ```bash
