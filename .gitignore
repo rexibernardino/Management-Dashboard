@@ -1,0 +1,10 @@
+# Mengabaikan file kunci rahasia Google JSON
+*.json
+
+# Mengabaikan folder konfigurasi Streamlit lokal
+.streamlit/
+
+# Mengabaikan file sistem
+__pycache__/
+.DS_Store
+*.pyc
