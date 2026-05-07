@@ -142,7 +142,7 @@ def parse_sheet_to_dataframe(worksheet):
         [2, [0, 3, 4, 5], 'Fixed Income'], # Nama Broker (A), Date (D), Volume (E), Fee (F)
         [2, [7, 10, 11, 12], 'Money Market'], # Nama Broker (H), Date (K), Volume (L), Fee (M)
         [2, [14, 17, 18, 19], 'Spot'],        # Nama Broker (O), Date (R), Volume (S), Fee (T)
-        [2, [21, 24, 25, 26], 'Swap']         # Nama Broker (V), Date (Y), Volume (Z), Fee ([)
+        [2, [21, 24, 25, 26], 'Swap']         # Nama Broker (V), Date (Y), Volume (Z), Fee (AA)
     ]
     
     for start_row, cols, cat_name in configs:
