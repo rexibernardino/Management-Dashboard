@@ -1,6 +1,11 @@
 import streamlit as st
 import pandas as pd
-from data_processor import  calculate_monthly_recap, load_data_automatically, calculate_ranking, calculate_ranking_combined
+from data_processor import (
+    load_data_automatically, 
+    calculate_ranking, 
+    calculate_ranking_combined,
+    calculate_monthly_recap 
+    )
 from visualizer import create_bar_chart
 
 st.set_page_config(page_title="Management Dashboard",page_icon="📋", layout="wide")
