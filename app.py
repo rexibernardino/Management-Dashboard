@@ -246,10 +246,9 @@ if check_password():
                 
                 # 6. Ringkasan Tambahan (Metrics)
                 st.divider()
-                m1, m2, m3 = st.columns(3)
+                m1, m2 = st.columns(2)
                 m1.metric("Total Fee in Period", f"IDR {recap_pivot['Total'].sum():,.0f}")
-                m2.metric("Avg Fee per Row", f"IDR {recap_pivot['Average'].mean():,.0f}")
-                m3.metric("Bank Count", f"{df_to_process['Bank'].nunique()}")
+                m2.metric("Bank Count", f"{df_to_process['Bank'].nunique()}")
                 
             else:
                 st.warning("Tidak ada data untuk rentang waktu yang dipilih.")
