@@ -166,8 +166,13 @@ if check_password():
             # --- RENDER DASHBOARD ---
             for i, cat in enumerate(display_categories):
                 with cols[i % 2]:
-                    # Gunakan unit dari mapping, jika Fee mungkin Anda ingin menggantinya ke IDR (opsional)
-                    unit = unit_mapping.get(cat, "")
+                    # Gunakan unit dari mapping, jika Fee mungkin Anda ingin menggantinya ke IDR 
+                    if active_metric == "Fee":
+                     # Jika sedang di Dashboard Fee, gunakan format (in Rupiah)
+                        unit = "in Rupiah"
+                    else:
+                        # Jika di Dashboard Volume, gunakan mapping IDR BIO / USD MIO
+                        unit = unit_mapping.get(cat, "")
                     st.markdown(f"#### {cat} ({unit})")
                         
                     if cat == "FX Combined":
