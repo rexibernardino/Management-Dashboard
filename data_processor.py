@@ -112,16 +112,16 @@ def load_data_from_gdrive(spreadsheet_url):
             # Kolom Date berada pada indeks 3, 10, 17, dan 24
             configs = [
                 # Format: [BarisMulai, [IndeksBroker, IndeksDate, IndeksVol, IndeksFee], NamaKategori]
-                [3, [0, 3, 4, 5], 'Fixed Income'],   # Broker(A), Date(D), Volume(E), Fee(F)
-                [3, [7, 10, 11, 12], 'Money Market'], # Broker(H), Date(K), Volume(L), Fee(M)
-                [3, [14, 17, 18, 19], 'Spot'],        # Broker(O), Date(R), Volume(S), Fee(T)
-                [3, [21, 24, 25, 26], 'Swap']         # Broker(V), Date(Y), Volume(Z), Fee(AA)
+                [3, [0,2 , 3, 4, 5], 'Fixed Income'],   # Broker(A),Bank(C), Date(D), Volume(E), Fee(F)
+                [3, [7, 9,10, 11, 12], 'Money Market'], # Broker(H),Bank(K), Date(L), Volume(M), Fee(N)
+                [3, [14, 16,17, 18, 19], 'Spot'],        # Broker(O),Bank(R), Date(S), Volume(T), Fee(U)
+                [3, [21, 23,24, 25, 26], 'Swap']         # Broker(V),Bank(Y), Date(Z), Volume(AA), Fee(AB)
             ]
             
             for start_row, cols, cat_name in configs:
                 try:
                     temp = df_raw.iloc[start_row:, cols].copy()
-                    temp.columns = ['Broker_Name', 'Date', 'Volume', 'Fee']
+                    temp.columns = ['Broker_Name', 'Bank', 'Date', 'Volume', 'Fee']
                     
                     # Bersihkan baris kosong dan total
                     temp = temp[temp['Broker_Name'] != ""]
@@ -165,16 +165,16 @@ def parse_sheet_to_dataframe(worksheet):
     # Mapping berdasarkan struktur kolom Anda:
     # FIXED INCOME (Kolom A-F, Date di D) | MONEY MARKET (Kolom H-M, Date di K) ...
     configs = [
-            [3, [0, 3, 4, 5], 'Fixed Income'],
-            [3, [7, 10, 11, 12], 'Money Market'],
-            [3, [14, 17, 18, 19], 'Spot'],
-            [3, [21, 24, 25, 26], 'Swap']
+            [3, [0, 2,3, 4, 5], 'Fixed Income'],
+            [3, [7, 9,10, 11, 12], 'Money Market'],
+            [3, [14, 16,17, 18, 19], 'Spot'],
+            [3, [21, 23,24, 25, 26], 'Swap']
         ]
     
     for start_row, cols, cat_name in configs:
         try:
             temp = df_raw.iloc[start_row:, cols].copy()
-            temp.columns = ['Broker_Name', 'Date', 'Volume', 'Fee']
+            temp.columns = ['Broker_Name', 'Bank', 'Date', 'Volume', 'Fee']
             
             # Bersihkan data kosong
             temp = temp[temp['Broker_Name'] != ""]
@@ -236,3 +236,34 @@ def calculate_ranking_combined(df_subset, target_col='Volume'):
     ranked.index += 1
     ranked.index.name = 'Rank'
     return ranked.reset_index()
+
+def calculate_monthly_recap(df_filtered):
+    if df_filtered.empty:
+        return pd.DataFrame()
+
+    df = df_filtered.copy()
+    
+    # Pastikan tidak ada nilai kosong di kolom Bank & Broker untuk pivot
+    df['Bank'] = df['Bank'].fillna('Unknown')
+    df['Broker_Name'] = df['Broker_Name'].fillna('Unknown')
+    
+    df['Month_Name'] = df['Date'].dt.strftime('%b') 
+    
+    months_order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    
+    # Pivot Table
+    pivot = df.pivot_table(
+        index=['Bank', 'Broker_Name'],
+        columns='Month_Name',
+        values='Fee',
+        aggfunc='sum'
+    ).fillna(0)
+
+    # Reindex agar urutan bulan benar
+    existing_months = [m for m in months_order if m in pivot.columns]
+    pivot = pivot.reindex(columns=existing_months)
+
+    pivot['Total'] = pivot.sum(axis=1)
+    pivot['Average'] = pivot[existing_months].mean(axis=1)
+
+    return pivot

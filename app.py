@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from data_processor import load_data_automatically, calculate_ranking, calculate_ranking_combined
+from data_processor import  calculate_monthly_recap, load_data_automatically, calculate_ranking, calculate_ranking_combined
 from visualizer import create_bar_chart
 
 st.set_page_config(page_title="Management Dashboard",page_icon="📋", layout="wide")
@@ -61,7 +61,7 @@ if check_password():
 
     st.sidebar.divider()
     # --- SIDEBAR MENU ---
-    menu = st.sidebar.radio("Menu", ["Dashboard by Volume", "Dashboard by Fee", "Data Explorer"])
+    menu = st.sidebar.radio("Menu", ["Dashboard by Volume", "Dashboard by Fee", "Dashboard by Bank & Broker", "Data Explorer"])
     categories = ["Fixed Income", "Money Market", "Spot", "Swap"]
 
     if 'main_df' not in st.session_state:
@@ -70,56 +70,56 @@ if check_password():
             st.session_state.main_df = df
             st.session_state.sheet_title = title
 
-    if menu in ["Dashboard by Volume", "Dashboard by Fee"]:
-            active_metric = "Volume" if menu == "Dashboard by Volume" else "Fee"
+    active_metric = "Volume" if menu == "Dashboard by Volume" else "Fee" if menu == "Dashboard by Fee" else "Bank & Broker Recap" if menu == "Dashboard by Bank & Broker" else "Data Explorer"
 
-            st.title(f"📊 {st.session_state.sheet_title} ({active_metric})")
-            
-            # --- PENYIAPAN DATA ---
-            # Selalu gunakan copy() agar st.session_state.main_df tidak rusak
-            df_working = st.session_state.main_df.copy()
-            df_working['Date'] = pd.to_datetime(df_working['Date']) 
+    # --- PENYIAPAN DATA ---
+    # Selalu gunakan copy() agar st.session_state.main_df tidak rusak
+    df_working = st.session_state.main_df.copy()
+    df_working['Date'] = pd.to_datetime(df_working['Date']) 
+    # Inisialisasi date_range dengan nilai default dari data agar tidak kosong
+    date_range = None
 
-            st.sidebar.divider()
+    if not df_working.empty:
+        min_date = df_working['Date'].min().date()
+        max_date = df_working['Date'].max().date()
 
-            # Inisialisasi date_range dengan nilai default dari data agar tidak kosong
-            date_range = None
-
-            if not df_working.empty:
-                min_date = df_working['Date'].min().date()
-                max_date = df_working['Date'].max().date()
-
-                st.sidebar.subheader("📅 Filter Periode")
+        st.sidebar.subheader("📅 Filter Periode")
                 
-                # ✅ PERBAIKAN: Inisialisasi session_state untuk date_range jika belum ada
-                if "selected_date_range" not in st.session_state:
-                    st.session_state.selected_date_range = (min_date, max_date)
+        # ✅ PERBAIKAN: Inisialisasi session_state untuk date_range jika belum ada
+        if "selected_date_range" not in st.session_state:
+            st.session_state.selected_date_range = (min_date, max_date)
                 
-                # ✅ PERBAIKAN: Gunakan key yang SAMA untuk semua menu, ambil nilai dari session_state
-                date_range = st.sidebar.date_input(
-                    "Pilih Rentang Waktu",
-                    value=st.session_state.selected_date_range,
-                    min_value=min_date,
-                    max_value=max_date,
-                    key="global_date_range", # Key sama untuk semua menu
-                    help="Pilih tanggal mulai dan akhir untuk memfilter data transaksi."
-                )
+        # ✅ PERBAIKAN: Gunakan key yang SAMA untuk semua menu, ambil nilai dari session_state
+        date_range = st.sidebar.date_input(
+            "Pilih Rentang Waktu",
+            value=st.session_state.selected_date_range,
+            min_value=min_date,
+            max_value=max_date,
+            key="global_date_range", # Key sama untuk semua menu
+            help="Pilih tanggal mulai dan akhir untuk memfilter data transaksi."
+            )
                 
                 # ✅ PERBAIKAN: Simpan pilihan user ke session_state
-                if isinstance(date_range, tuple) and len(date_range) == 2:
-                    st.session_state.selected_date_range = date_range
+        if isinstance(date_range, tuple) and len(date_range) == 2:
+            st.session_state.selected_date_range = date_range
 
-            # --- EKSEKUSI FILTER ---
-            if isinstance(date_range, tuple) and len(date_range) == 2:
-                start_date, end_date = date_range
-                mask = (df_working['Date'].dt.date >= start_date) & (df_working['Date'].dt.date <= end_date)
-                df_filtered = df_working.loc[mask].copy()
-                date_info = f"({start_date} - {end_date})"
-                st.info(f"📍 Menampilkan data **{active_metric}** dari **{start_date}** sampai **{end_date}**")
-            else:
-                st.warning("Silakan pilih tanggal akhir pada kalender untuk melengkapi rentang waktu.")
-                df_filtered = pd.DataFrame()
-                date_info = ""
+        # --- EKSEKUSI FILTER ---
+        if isinstance(date_range, tuple) and len(date_range) == 2:
+            start_date, end_date = date_range
+            mask = (df_working['Date'].dt.date >= start_date) & (df_working['Date'].dt.date <= end_date)
+            df_filtered = df_working.loc[mask].copy()
+            date_info = f"({start_date} - {end_date})"
+            st.info(f"📍 Menampilkan data **{active_metric}** dari **{start_date}** sampai **{end_date}**")
+        else:
+            st.warning("Silakan pilih tanggal akhir pada kalender untuk melengkapi rentang waktu.")
+            df_filtered = pd.DataFrame()
+            date_info = ""
+
+    if menu in ["Dashboard by Volume", "Dashboard by Fee"]:
+
+            st.title(f"📊 {st.session_state.sheet_title} ({active_metric})")
+
+            st.sidebar.divider()
 
             # --- KONFIGURASI TAMPILAN ---
             unit_mapping = {
@@ -202,7 +202,56 @@ if check_password():
                     else:
                         st.caption(f"⚠️ Tidak ada transaksi {cat} di rentang ini.")
 
-    if menu == "Data Explorer":
+    elif menu == "Dashboard by Bank & Broker":
+        # 1. Pastikan filter tanggal sudah ada (mengambil dari logic global di app.py)
+        if "selected_date_range" in st.session_state and len(st.session_state.selected_date_range) == 2:
+            start_date, end_date = st.session_state.selected_date_range
+            
+            # 2. Filter data utama berdasarkan range yang sama dengan dashboard
+            mask = (st.session_state.main_df['Date'].dt.date >= start_date) & \
+                (st.session_state.main_df['Date'].dt.date <= end_date)
+            df_to_process = st.session_state.main_df.loc[mask].copy()
+            
+            st.title("🏦 Monthly Bank & Broker Recap")
+
+            if not df_to_process.empty:
+                # 3. Hitung Pivot
+                recap_pivot = calculate_monthly_recap(df_to_process)
+                
+                # 4. Tambahkan Baris Grand Total (Vertical Sum)
+                grand_total = recap_pivot.sum().to_frame().T
+                grand_total.index = pd.MultiIndex.from_tuples([('GRAND TOTAL', '')], names=['Bank', 'Broker_Name'])
+                
+                # Gabungkan untuk tampilan tabel
+                final_display = pd.concat([recap_pivot, grand_total])
+
+                # 5. Tampilkan Tabel dengan Formatting
+                # Ambil semua kolom kecuali index untuk config
+                month_cols = [c for c in recap_pivot.columns if c not in ['Total', 'Average']]
+                
+                st.dataframe(
+                    final_display,
+                    column_config={
+                        **{m: st.column_config.NumberColumn(m, format="%,.0f") for m in month_cols},
+                        "Total": st.column_config.NumberColumn("Total IDR", format="%,.0f", width="medium"),
+                        "Average": st.column_config.NumberColumn("Avg IDR", format="%,.0f", width="medium"),
+                    },
+                    use_container_width=True
+                )
+                
+                # 6. Ringkasan Tambahan (Metrics)
+                st.divider()
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Total Fee in Period", f"IDR {recap_pivot['Total'].sum():,.0f}")
+                m2.metric("Avg Fee per Row", f"IDR {recap_pivot['Average'].mean():,.0f}")
+                m3.metric("Bank Count", f"{df_to_process['Bank'].nunique()}")
+                
+            else:
+                st.warning("Tidak ada data untuk rentang waktu yang dipilih.")
+        else:
+            st.error("Silakan tentukan rentang waktu terlebih dahulu di menu Dashboard.")
+
+    elif menu == "Data Explorer":
         st.title("🗂️ Data Explorer")
         st.dataframe(
             st.session_state.main_df, 
