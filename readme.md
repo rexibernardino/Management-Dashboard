@@ -1,51 +1,50 @@
-# 📊 Management Dashboard Streamlit
+# 📊 Streamlit Management Dashboard
 
-Aplikasi dashboard berbasis web yang dibangun dengan **Streamlit** untuk memproses dan memvisualisasikan data transaksi keuangan (Fixed Income, Money Market, Spot, dan Swap) langsung dari Google Sheets.
+A web-based dashboard application built with Streamlit to process and visualize financial transaction data (Fixed Income, Money Market, Spot, and Swap) directly from Google Sheets.
 
-## 🚀 Fitur Utama
-- **Auto-Sync Google Drive**: Menarik data secara otomatis dari Google Sheets menggunakan Service Account.
-- **Login System**: Keamanan akses menggunakan kredensial yang tersimpan di Streamlit Secrets.
-- **Filtering Data**: Filter berdasarkan rentang tanggal yang dinamis.
-- **Visualisasi Interaktif**: Grafik bar horizontal menggunakan Plotly dengan opsi pengurutan (Ascending/Descending).
-- **FX Combined View**: Fitur untuk menggabungkan data kategori 'Spot' dan 'Swap' menjadi satu tampilan 'FX Total'.
-- **Data Explorer**: Tabel mentah untuk meninjau data yang telah diproses.
+## 🚀 Key Features
+- **Auto-Sync Google Drive**: Automatically pulls data from Google Sheets using a Service Account.
+- **Login System**: Secure access using credentials stored in Streamlit Secrets.
+- **Data Filtering**: Filter by a dynamic date range.
+- **Interactive Visualization**: Horizontal bar charts using Plotly with sorting options (Ascending/Descending).
+- **FX Combined View**: Feature to combine 'Spot' and 'Swap' category data into a single 'FX Total' view.
+- **Data Explorer**: Raw table for reviewing processed data.
 
 ## 🛠️ Tech Stack
 
-Proyek ini dibangun menggunakan teknologi berikut:
-* **Python**: Bahasa pemrograman utama.
-* **Streamlit**: Framework untuk antarmuka dashboard web yang interaktif.
-* **Pandas**: Digunakan untuk pembersihan, manipulasi, dan analisis data tabel.
-* **Plotly Express**: Library untuk visualisasi data berupa grafik bar yang dinamis.
-* **Gspread & Google OAuth**: Untuk autentikasi dan komunikasi dengan Google Sheets API.
-* **Google Sheets**: Berperan sebagai database cloud untuk penyimpanan data transaksi.
+This project is built using the following technologies:
+* Python: The primary programming language.
+* Streamlit: A framework for interactive web dashboard interfaces.
+* Pandas: Used for cleaning, manipulating, and analyzing tabular data.
+* Plotly Express: A library for data visualization in the form of dynamic bar charts.
+* Gspread & Google OAuth: For authentication and communication with the Google Sheets API.
+* Google Sheets: Serves as a cloud database for storing transaction data.
 
 ---
 
 ## 📂 File Structure
 
-Struktur folder proyek ini dirancang agar modular dan mudah dikelola:
+This project's folder structure is designed to be modular and easy to manage:
 
 ```text
 ├── .streamlit/
-│   └── secrets.toml       # Kredensial login & GCP Service Account (Local only)
-├── app.py                 # File utama: Logika UI, Login, dan Filter Periode
-├── data_processor.py      # Modul: Pengolahan data, cleaning, dan API Google Sheets
-├── visualizer.py          # Modul: Logika pembuatan grafik Plotly
-├── requirements.txt       # Daftar library Python yang dibutuhkan
-├── .gitignore             # Daftar file yang tidak boleh diunggah (secrets.toml)
-└── README.md              # Dokumentasi proyek
+│ └── secrets.toml # Login credentials & GCP Service Account (Local only)
+├── app.py # Main files: UI logic, login, and period filter
+├── data_processor.py # Module: Data processing, cleaning, and Google Sheets API
+├── visualizer.py # Module: Plotly graphing logic
+├── requirements.txt # List of required Python libraries
+├── .gitignore # List of files that should not be uploaded (secrets.toml)
+└── README.md # Project documentation
 ```
 
 ---
 
-## 🛠️ Instalasi
+## 🛠️ Installation
 
-1. **Clone Repositori**:
-   ```bash
-   git clone https://github.com/rexibernardino/Management-Dashboard
+1. **Clone Repository**: 
+```bash 
+git clone https://github.com/rexibernardino/Management-Dashboard
 
-2. **Install Library**:
-   ```bash
-   pip install -r requirements.txt
-
+2. **Install Library**: 
+```bash 
+pip install -r requirements.txt
