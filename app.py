@@ -212,11 +212,32 @@ if check_password():
         if "selected_date_range" in st.session_state and len(st.session_state.selected_date_range) == 2:
             start_date, end_date = st.session_state.selected_date_range
             
-            # 2. Filter data utama berdasarkan range yang sama dengan dashboard
+            # --- FITUR BARU: Filter Divisi ---
+            st.sidebar.subheader("🎯 Filter Kategori")
+            # Menambahkan pilihan "Semua Divisi" agar user tetap bisa melihat total keseluruhan
+            list_divisi = ["Semua Divisi"] + categories # categories diambil dari list di awal app.py
+            
+            selected_divisi = st.sidebar.multiselect(
+                "Pilih Divisi:",
+                list_divisi,
+                default="Semua Divisi",
+                key="filter_divisi_recap"
+            )
+
+            # 2. Filter data utama berdasarkan range tanggal
             mask = (st.session_state.main_df['Date'].dt.date >= start_date) & \
                 (st.session_state.main_df['Date'].dt.date <= end_date)
             df_to_process = st.session_state.main_df.loc[mask].copy()
-            
+
+            # --- LOGIKA FILTER DIVISI ---
+            if "Semua Divisi" not in selected_divisi:
+                df_to_process = df_to_process[df_to_process['Category'].isin(selected_divisi)]
+                st.info(f"Menampilkan data untuk divisi: **{', '.join(selected_divisi)}**")
+
+        if not df_to_process.empty:
+            # 3. Hitung Pivot
+            recap_pivot = calculate_monthly_recap(df_to_process)
+
             st.title("🏦 Monthly Bank & Broker Recap")
 
             if not df_to_process.empty:
