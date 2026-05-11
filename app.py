@@ -213,6 +213,7 @@ if check_password():
             start_date, end_date = st.session_state.selected_date_range
             
             # --- FITUR BARU: Filter Divisi ---
+            st.sidebar.divider()
             st.sidebar.subheader("🎯 Filter Kategori")
             # Menambahkan pilihan "Semua Divisi" agar user tetap bisa melihat total keseluruhan
             list_divisi = ["Semua Divisi"] + categories # categories diambil dari list di awal app.py
