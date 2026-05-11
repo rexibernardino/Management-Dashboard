@@ -12,7 +12,7 @@ A web-based dashboard application built with Streamlit to process and visualize 
 
 ## 🛠️ Tech Stack
 
-This project is built using the following technologies:
+This project is built using the following stacks:
 * Python: The primary programming language.
 * Streamlit: A framework for interactive web dashboard interfaces.
 * Pandas: Used for cleaning, manipulating, and analyzing tabular data.
