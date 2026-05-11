@@ -28,13 +28,13 @@ This project's folder structure is designed to be modular and easy to manage:
 
 ```text
 ├── .streamlit/
-│ └── secrets.toml # Login credentials & GCP Service Account (Local only)
-├── app.py # Main files: UI logic, login, and period filter
-├── data_processor.py # Module: Data processing, cleaning, and Google Sheets API
-├── visualizer.py # Module: Plotly graphing logic
-├── requirements.txt # List of required Python libraries
-├── .gitignore # List of files that should not be uploaded (secrets.toml)
-└── README.md # Project documentation
+│ └── secrets.toml      # Login credentials & GCP Service Account (Local only)
+├── app.py              # Main files: UI logic, login, and period filter
+├── data_processor.py   # Module: Data processing, cleaning, and Google Sheets API
+├── visualizer.py       # Module: Plotly graphing logic
+├── requirements.txt    # List of required Python libraries
+├── .gitignore          # List of files that should not be uploaded (secrets.toml)
+└── README.md           # Project documentation
 ```
 
 ---
@@ -44,7 +44,9 @@ This project's folder structure is designed to be modular and easy to manage:
 1. **Clone Repository**: 
 ```bash 
 git clone https://github.com/rexibernardino/Management-Dashboard
+```
 
 2. **Install Library**: 
 ```bash 
 pip install -r requirements.txt
+```
