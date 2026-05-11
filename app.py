@@ -208,15 +208,13 @@ if check_password():
                         st.caption(f"⚠️ Tidak ada transaksi {cat} di rentang ini.")
 
     elif menu == "Dashboard by Bank & Broker":
-        # 1. Pastikan filter tanggal sudah ada (mengambil dari logic global di app.py)
         if "selected_date_range" in st.session_state and len(st.session_state.selected_date_range) == 2:
             start_date, end_date = st.session_state.selected_date_range
             
-            # --- FITUR BARU: Filter Divisi ---
+            # --- Filter Divisi ---
             st.sidebar.divider()
             st.sidebar.subheader("🎯 Filter Kategori")
-            # Menambahkan pilihan "Semua Divisi" agar user tetap bisa melihat total keseluruhan
-            list_divisi = ["Semua Divisi"] + categories # categories diambil dari list di awal app.py
+            list_divisi = ["Semua Divisi"] + categories 
             
             selected_divisi = st.sidebar.multiselect(
                 "Pilih Divisi:",
@@ -225,37 +223,40 @@ if check_password():
                 key="filter_divisi_recap"
             )
 
-            # 2. Filter data utama berdasarkan range tanggal
+            group_by_bank = st.sidebar.toggle("Gabungkan Semua Broker per Bank", value=False)
+
+            # 2. Filter data utama
             mask = (st.session_state.main_df['Date'].dt.date >= start_date) & \
-                (st.session_state.main_df['Date'].dt.date <= end_date)
+                   (st.session_state.main_df['Date'].dt.date <= end_date)
             df_to_process = st.session_state.main_df.loc[mask].copy()
 
-            # --- LOGIKA FILTER DIVISI ---
             if "Semua Divisi" not in selected_divisi:
                 df_to_process = df_to_process[df_to_process['Category'].isin(selected_divisi)]
                 st.info(f"Menampilkan data untuk divisi: **{', '.join(selected_divisi)}**")
 
-        if not df_to_process.empty:
-            # 3. Hitung Pivot
-            recap_pivot = calculate_monthly_recap(df_to_process)
-
             st.title("🏦 Monthly Bank & Broker Recap")
 
             if not df_to_process.empty:
-                # 3. Hitung Pivot
+                # --- STEP 1: Hitung Pivot (HANYA SEKALI) ---
                 recap_pivot = calculate_monthly_recap(df_to_process)
+
+                # --- STEP 2: Logika Gabung Bank ---
+                if group_by_bank:
+                    df_temp = recap_pivot.reset_index()
+                    agg_dict = {col: 'sum' for col in df_temp.columns if col not in ['Bank', 'Broker_Name']}
+                    agg_dict['Broker_Name'] = lambda x: ', '.join(x.unique())
+                    
+                    recap_pivot = df_temp.groupby('Bank').agg(agg_dict)
+                    recap_pivot = recap_pivot.reset_index().set_index(['Bank', 'Broker_Name'])
                 
-                # 4. Tambahkan Baris Grand Total (Vertical Sum)
-                grand_total = recap_pivot.sum().to_frame().T
+                # --- STEP 3: Tambahkan Grand Total ---
+                grand_total = recap_pivot.sum(numeric_only=True).to_frame().T
                 grand_total.index = pd.MultiIndex.from_tuples([('GRAND TOTAL', '')], names=['Bank', 'Broker_Name'])
                 
-                # Gabungkan untuk tampilan tabel
                 final_display = pd.concat([recap_pivot, grand_total])
 
-                # 5. Tampilkan Tabel dengan Formatting
-                # Ambil semua kolom kecuali index untuk config
+                # --- STEP 4: Tampilkan Tabel ---
                 month_cols = [c for c in recap_pivot.columns if c not in ['Total', 'Average']]
-                
                 st.dataframe(
                     final_display,
                     column_config={
@@ -266,7 +267,6 @@ if check_password():
                     use_container_width=True
                 )
                 
-                # 6. Ringkasan Tambahan (Metrics)
                 st.divider()
                 m1, m2 = st.columns(2)
                 m1.metric("Total Fee in Period", f"IDR {recap_pivot['Total'].sum():,.0f}")
@@ -276,6 +276,7 @@ if check_password():
                 st.warning("Tidak ada data untuk rentang waktu yang dipilih.")
         else:
             st.error("Silakan tentukan rentang waktu terlebih dahulu di menu Dashboard.")
+            
 
     elif menu == "Data Explorer":
         st.title("🗂️ Data Explorer")
