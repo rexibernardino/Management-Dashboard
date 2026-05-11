@@ -243,27 +243,30 @@ def calculate_monthly_recap(df_filtered):
 
     df = df_filtered.copy()
     
-    # Pastikan tidak ada nilai kosong di kolom Bank & Broker untuk pivot
     df['Bank'] = df['Bank'].fillna('Unknown')
     df['Broker_Name'] = df['Broker_Name'].fillna('Unknown')
     
-    df['Month_Name'] = df['Date'].dt.strftime('%b') 
+    # --- PERBAIKAN: Sertakan Tahun dalam Nama Bulan ---
+    # Gunakan format '%b %Y' untuk menghasilkan 'Jan 2024'
+    df['Month_Year'] = df['Date'].dt.strftime('%b %Y') 
     
-    months_order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    # Karena urutan bulan sekarang dinamis (tergantung tahun), 
+    # kita urutkan berdasarkan tanggal aslinya agar kolom tidak berantakan
+    df = df.sort_values('Date')
+    sorted_months = df['Month_Year'].unique()
     
     # Pivot Table
     pivot = df.pivot_table(
         index=['Bank', 'Broker_Name'],
-        columns='Month_Name',
+        columns='Month_Year', # Gunakan kolom baru
         values='Fee',
         aggfunc='sum'
     ).fillna(0)
 
-    # Reindex agar urutan bulan benar
-    existing_months = [m for m in months_order if m in pivot.columns]
-    pivot = pivot.reindex(columns=existing_months)
+    # Reindex agar urutan kolom sesuai urutan waktu (Jan 24, Feb 24, dst)
+    pivot = pivot.reindex(columns=sorted_months)
 
     pivot['Total'] = pivot.sum(axis=1)
-    pivot['Average'] = pivot[existing_months].mean(axis=1)
+    pivot['Average'] = pivot[sorted_months].mean(axis=1)
 
     return pivot
