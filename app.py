@@ -4,7 +4,8 @@ from data_processor import (
     load_data_automatically, 
     calculate_ranking, 
     calculate_ranking_combined,
-    calculate_monthly_recap 
+    calculate_monthly_recap,
+    calculate_bank_ranking 
     )
 from visualizer import create_bar_chart
 
@@ -66,7 +67,7 @@ if check_password():
 
     st.sidebar.divider()
     # --- SIDEBAR MENU ---
-    menu = st.sidebar.radio("Menu", ["Dashboard by Volume", "Dashboard by Fee", "Dashboard by Bank & Broker", "Data Explorer"])
+    menu = st.sidebar.radio("Menu", ["Dashboard by Volume", "Dashboard by Fee", "Dashboard by Bank (Visualize)","Dashboard by Bank & Broker", "Data Explorer"])
     categories = ["Fixed Income", "Money Market", "Spot", "Swap"]
 
     if 'main_df' not in st.session_state:
@@ -75,7 +76,7 @@ if check_password():
             st.session_state.main_df = df
             st.session_state.sheet_title = title
 
-    active_metric = "Volume" if menu == "Dashboard by Volume" else "Fee" if menu == "Dashboard by Fee" else "Bank & Broker Recap" if menu == "Dashboard by Bank & Broker" else "Data Explorer"
+    active_metric = "Volume" if menu == "Dashboard by Volume" else "Fee" if menu == "Dashboard by Fee" else "Bank & Broker Recap" if menu == "Dashboard by Bank (Visualize)" else "Bank & Broker Recap" if menu == "Dashboard by Bank & Broker" else "Data Explorer"
 
     # --- PENYIAPAN DATA ---
     # Selalu gunakan copy() agar st.session_state.main_df tidak rusak
@@ -206,6 +207,100 @@ if check_password():
                         st.plotly_chart(fig, use_container_width=True, key=f"chart_{cat}_{active_metric}_{view_option}")
                     else:
                         st.caption(f"⚠️ Tidak ada transaksi {cat} di rentang ini.")
+    
+    elif menu == "Dashboard by Bank (Visualize)":
+        st.title(f"🏦 Bank Performance Visualization ({active_metric})")
+        
+        # --- CONFIGURASI FILTER SAMA SEPERTI RECAP ---
+        st.sidebar.divider()
+        st.sidebar.subheader("🎯 Filter Kategori & Tampilan")
+        list_divisi = ["Semua Divisi"] + categories 
+        
+        selected_divisi = st.sidebar.multiselect(
+            "Pilih Divisi:",
+            list_divisi,
+            default="Semua Divisi",
+            key="filter_divisi_bank_visual"
+        )
+        
+        group_by_bank = st.sidebar.toggle("Gabungkan Semua Broker per Bank", value=True, disabled=True, help="Visualisasi otomatis diakumulasikan langsung berdasarkan Bank.")
+
+        sort_choice_bank = st.sidebar.selectbox(
+            f"Urutan {active_metric}:", 
+            ["Terbesar (Descending)", "Terkecil (Ascending)"], 
+            index=0,
+            key="global_sort_choice_bank"
+        )
+        is_asc_bank = True if sort_choice_bank == "Terkecil (Ascending)" else False
+
+        # Pilih metric pemicu (Volume atau Fee) via radio button di halaman utama agar fleksibel
+        metric_choice = st.radio("Metrik Visualisasi:", ["Volume", "Fee"], horizontal=True, key="bank_metric_choice")
+
+        if not df_filtered.empty:
+            # Panggil fungsi proses data bank ranking (Tanpa Mengubah Struktur Sebelumnya)
+            df_bank = calculate_bank_ranking(df_filtered, selected_divisi, group_by_bank=True, target_col=metric_choice)
+            
+            if not df_bank.empty:
+                # --- TAMBAHAN FITUR: FILTER RENTANG TOP RANK (1-10, 11-20, dst.) ---
+                total_banks = len(df_bank)
+                
+                # Buat opsi rentang secara dinamis berdasarkan kelipatan 10 dari total data bank
+                rank_options = []
+                for start in range(1, total_banks + 1, 10):
+                    end = min(start + 9, total_banks)
+                    rank_options.append(f"Rank {start} - {end}")
+                
+                st.sidebar.divider()
+                st.sidebar.subheader("🔝 Batasan Peringkat")
+                selected_rank_range = st.sidebar.selectbox(
+                    "Pilih Rentang Peringkat:",
+                    options=rank_options,
+                    index=0, # Default otomatis ke Top 10 (Rank 1 - 10)
+                    key="bank_rank_range_selector"
+                )
+                
+                # Parsing string pilihan ("Rank 1 - 10" -> start_idx=0, end_idx=10)
+                try:
+                    parts = selected_rank_range.replace("Rank ", "").split(" - ")
+                    start_rank = int(parts[0])
+                    end_rank = int(parts[1])
+                except:
+                    start_rank, end_rank = 1, 10
+                
+                # Tambahkan index urutan asli sebagai kolom Rank sebelum di-slice
+                df_bank_with_rank = df_bank.copy()
+                df_bank_with_rank['Rank'] = df_bank_with_rank.index + 1
+                
+                # Potong dataframe berdasarkan rentang rank yang dipilih user
+                df_bank_sliced = df_bank_with_rank[(df_bank_with_rank['Rank'] >= start_rank) & (df_bank_with_rank['Rank'] <= end_rank)].copy()
+                # Hapus kolom Rank sementara agar tidak mengganggu parameter fungsi bawaan visualizer
+                df_bank_to_chart = df_bank_sliced.drop(columns=['Rank'])
+                
+                # -------------------------------------------------------------------
+                
+                color_theme_bank = "Viridis" if metric_choice == "Volume" else "Plasma"
+                
+                # Menggunakan dataframe yang sudah di-slice (df_bank_to_chart)
+                fig_bank = create_bar_chart(
+                    df_bank_to_chart, 
+                    f"Total {metric_choice} per Bank {date_info} [{selected_rank_range}]", 
+                    color_theme_bank, 
+                    is_ascending=is_asc_bank, 
+                    target_val=metric_choice
+                )
+                
+                # Modifikasi label sumbu Y agar menampilkan teks 'Bank Name' bukan 'Broker Name'
+                fig_bank.update_layout(yaxis=dict(title="Bank Name", autorange='reversed'))
+                
+                st.plotly_chart(fig_bank, use_container_width=True, key=f"chart_bank_visual_{metric_choice}")
+                
+                # Tampilkan tabel pendukung di bawah grafik (menggunakan data yang sudah dislice dengan kolom Rank rapi)
+                st.subheader(f"📋 Rincian Data ({selected_rank_range})")
+                df_display_bank = df_bank_sliced.rename(columns={'Broker_Name': 'Bank Name', metric_choice: f'Total {metric_choice}'})
+                df_display_bank = df_display_bank.set_index('Rank') # Menjadikan Rank asli sebagai index tabel
+                st.dataframe(df_display_bank, use_container_width=True)
+            else:
+                st.caption("⚠️ Tidak ada transaksi Bank untuk divisi yang dipilih di rentang ini.")
 
     elif menu == "Dashboard by Bank & Broker":
         if "selected_date_range" in st.session_state and len(st.session_state.selected_date_range) == 2:

@@ -154,7 +154,41 @@ def load_data_automatically():
     except Exception as e:
         st.error(f"Gagal Sinkronisasi Otomatis: {e}")
         return pd.DataFrame(), "Dashboard"
+
+def calculate_bank_ranking(df_filtered, selected_categories, group_by_bank=False, target_col='Volume'):
+    """
+    Menghitung akumulasi nilai (Volume/Fee) per Bank berdasarkan filter divisi yang dipilih.
+    """
+    if df_filtered.empty:
+        return pd.DataFrame(columns=['Bank', target_col])
     
+    df_to_process = df_filtered.copy()
+    
+    # Filter berdasarkan kategori divisi yang dipilih
+    if "Semua Divisi" not in selected_categories and selected_categories:
+        df_to_process = df_to_process[df_to_process['Category'].isin(selected_categories)]
+        
+    if df_to_process.empty:
+        return pd.DataFrame(columns=['Bank', target_col])
+        
+    df_to_process['Bank'] = df_to_process['Bank'].fillna('Unknown').str.strip()
+    df_to_process[target_col] = pd.to_numeric(df_to_process[target_col], errors='coerce').fillna(0)
+    
+    # Grouping berdasarkan Bank
+    ranked_bank = df_to_process.groupby('Bank')[target_col].sum().reset_index()
+    
+    # Truncate nilai desimal agar konsisten dengan visualisasi volume/fee sebelumnya
+    ranked_bank[target_col] = ranked_bank[target_col].apply(lambda x: float(math.trunc(x)))
+    
+    # Default sort descending (terbesar ke terkecil) untuk keperluan plotting awal
+    ranked_bank = ranked_bank.sort_values(by=target_col, ascending=False).reset_index(drop=True)
+    
+    # Menyesuaikan nama kolom output agar fungsi visualizer.py (create_bar_chart) 
+    # bisa membaca sumbu Y dengan mengganti nama kolom Bank menjadi Broker_Name secara temporer
+    ranked_bank = ranked_bank.rename(columns={'Bank': 'Broker_Name'})
+    
+    return ranked_bank
+
 def parse_sheet_to_dataframe(worksheet):
     data_raw = worksheet.get_all_values()
     if not data_raw: return pd.DataFrame()
